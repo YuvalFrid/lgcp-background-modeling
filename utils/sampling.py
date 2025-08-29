@@ -3,14 +3,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import quad
 from scipy.optimize import minimize
-
-
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import quad
 from scipy.optimize import minimize
 
+
+
+
+
 class CustomPDFModel:
+    #### A handler for generating 'n_samples' samples and fitting toy data to a given PDF 'pdf_func' with 'true_params'.  
     def __init__(self, pdf_func, true_params, n_samples, seed=None):
         self.pdf_func = pdf_func
         self.true_params = true_params
@@ -127,16 +130,16 @@ class CustomPDFModel:
         y_true = self.normalized_pdf(x, self.true_params)
         plt.plot(x, y_true, label='True PDF',color = 'k',linestyle = '--',lw=3,)
 
-        plt.hist(self.samples, bins=bins, range = (0,1),density=True, alpha=0.5, label='Samples',color = 'red')
+        plt.hist(self.samples, bins=bins, range = (0,1),density=True, alpha=0.5, label='Samples',color = 'blue',histtype = 'step')
 
         if self.fitted_params is not None:
             y_fit = self.normalized_pdf(x, self.fitted_params)
-            plt.plot(x, y_fit, label='Fitted PDF', lw=3,color = 'blue', linestyle='-')
+            plt.plot(x, y_fit, label='Fitted PDF', lw=3,color = 'red', linestyle='-')
 
             if show_uncertainty and self.covariance is not None:
                 unc = self.pdf_uncertainty_band(x, n_sigma=n_sigma)
                 if unc is not None:
-                    plt.fill_between(x, y_fit - unc, y_fit + unc, color='blue', alpha=0.3,
+                    plt.fill_between(x, y_fit - unc, y_fit + unc, color='red', alpha=0.3,
                                      label=f'±{n_sigma}σ uncertainty band')
         
         plt.legend()

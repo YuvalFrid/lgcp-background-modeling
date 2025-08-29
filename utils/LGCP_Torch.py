@@ -81,19 +81,19 @@ class TorchModel(nn.Module):
         rel = torch.exp(log_likes - log_max)
         return log_max + torch.log(torch.mean(rel))
 
-    def grad_optimize_hyperparameters(self, steps=100, lr=0.1):
+    def grad_optimize_hyperparameters(self, epochs=100, lr=0.1):
         optimizer = optim.Adam(self.parameters(), lr=lr)
-        for step in range(steps):
+        for step in range(epochs):
             optimizer.zero_grad()
             loss = -self.marginal_log_likelihood()  # NEGATIVE: we want to maximize
             loss.backward()
             optimizer.step()
-            if step % 10 == 0 or step == steps - 1:
-                print(f"[Step {step}] Marginal LL: {-loss.item():.4f}, "
+            if epochs % 10 == 0 or epochs == epochs - 1:
+                print(f"[Epoch {step}] Marginal LL: {-loss.item():.4f}, "
                       f"Length: {torch.exp(self.log_length_scale).item():.4f}, "
                       f"Var: {torch.exp(self.log_var_scale).item():.4f}")
 
-    def grad_fit(self, lr=0.01, epochs=100):
+    def mean_fit(self,epochs = 100, lr=0.01):
 #        mean = self.mean.clone().detach().requires_grad_(True)
         # Step 1: Compute kernel matrix from current hyperparameters
         K = self._compute_cov()  # should return torch.Tensor of shape (N, N)
@@ -132,55 +132,9 @@ class TorchModel(nn.Module):
         lower /= scale
         upper /= scale
         return lower,median,upper
-    def calc_median(self,samples=10000):
-        cov = self._compute_cov()
-        mvn = MultivariateNormal(torch.zeros_like(self.mean), covariance_matrix=cov)
-        vectors = mvn.sample((samples,))
-        log_posteriors = self.log_posterior(vectors)
-        weights = torch.exp(log_posteriors - torch.max(log_posteriors))
-        weights /= weights.sum()
-        
-        vectors = vectors.detach().numpy()
-        weights = weights.detach().numpy()
-        
-        percentiles = [16, 50, 84]
-        D = vectors.shape[1]
-        results = np.zeros((3, D))  # [16, 50, 84] x D
 
-        for d in range(D):
-            sorted_indices = np.argsort(vectors[:, d])
-            sorted_vals = vectors[sorted_indices, d]
-            sorted_weights = weights[sorted_indices]
-            cum_weights = np.cumsum(sorted_weights)
-
-            for i, p in enumerate(percentiles):
-                cutoff = p / 100.0
-                idx = np.searchsorted(cum_weights, cutoff)
-                if idx >= len(sorted_vals):
-                    idx = -1
-                results[i, d] = sorted_vals[idx]
-
-            # Plot
-        median = results[1]
-        self.median = median
-        lower = results[0]
-        upper = results[2]
-        median = np.exp(median)
-        scale = np.trapz(median,self.x)
-        median /= scale
-        lower = np.exp(lower)
-        lower /= scale
-        upper = np.exp(upper)
-        upper/= scale
-        return lower,median,upper
-
-
-
-
-
-    def plot(self,true_pdf,ref_curve,ref_unc,samples = 10000):
-#        lower,median,upper = self.calc_median(samples)
-        lower,median,upper = self.run_nuts_sampler(steps = 1000,warmup = 500)
+    def plot(self,true_pdf,ref_curve,ref_unc,MCMC_steps = 1000):
+        lower,median,upper = self.run_nuts_sampler(steps = MCMC_steps,warmup = MCMC_steps//2)
         plt.title("LGCP_Fit")
         plt.grid(True)
         true_pdf /= np.trapz(true_pdf,self.x)
